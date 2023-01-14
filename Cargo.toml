@@ -15,3 +15,5 @@ serde_derive = "1.0.152"
 local-ip-address = "0.5.1"
 toml = "0.5.10"
 exitcode = "1.1.2"
+
+reqwest = { version = "0.11.13", features = ["native-tls"] }

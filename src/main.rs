@@ -1,4 +1,5 @@
 use axum::{
+    extract::State,
     routing::{get, post},
     Json, Router,
 };
@@ -42,9 +43,10 @@ async fn main() {
 
     //paths
     let app = Router::new()
+        .route("/message", post(send_message))
+        .with_state(config)
         .route("/", get(hello))
-        .route("/exit", get(exit))
-        .route("/message", post(send_message));
+        .route("/exit", get(exit));
 
     //run server
     println!("Running on {}", &socket_address);
@@ -73,9 +75,12 @@ async fn hello() -> &'static str {
     return "Hello World\n";
 }
 
-async fn send_message(Json(payload): Json<CreateMessage>, config: Config) -> &'static str {
+async fn send_message(
+    State(config): State<Config>,
+    Json(payload): Json<CreateMessage>,
+) -> &'static str {
     sleep(Duration::from_millis(500)).await;
-    if payload.auth == config.auth {
+    if payload.auth != config.auth {
         return "Неправильный код авторизации\n";
     }
 
