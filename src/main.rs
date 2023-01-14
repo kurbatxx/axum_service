@@ -4,6 +4,7 @@ use axum::{
     Json, Router,
 };
 use local_ip_address::local_ip;
+use reqwest::Client;
 use serde_derive::Deserialize;
 use std::{fs, net::SocketAddr};
 use std::{process, time::Duration};
@@ -37,6 +38,19 @@ async fn main() {
         process::exit(exitcode::OK);
     }
 
+    //create client
+    let client = reqwest::Client::builder()
+        .use_native_tls()
+        .danger_accept_invalid_hostnames(true)
+        .danger_accept_invalid_certs(true)
+        .build()
+        .unwrap();
+
+    let server_state = ServerState {
+        client,
+        config: config.clone(),
+    };
+
     //get ip
     let addr = format!("{}:{}", local_ip().unwrap(), config.port);
     let socket_address: SocketAddr = addr.parse().expect("НЕПРАВИЛЬНЫЙ АДРЕС");
@@ -44,7 +58,7 @@ async fn main() {
     //paths
     let app = Router::new()
         .route("/message", post(send_message))
-        .with_state(config)
+        .with_state(server_state)
         .route("/", get(hello))
         .route("/exit", get(exit));
 
@@ -70,22 +84,50 @@ struct CreateMessage {
     message: String,
 }
 
+#[derive(Clone, Debug)]
+struct ServerState {
+    client: Client,
+    config: Config,
+}
+
 async fn hello() -> &'static str {
-    sleep(Duration::from_millis(300)).await;
-    return "Hello World\n";
+    sleep(Duration::from_millis(1)).await;
+    return "It works\n";
 }
 
 async fn send_message(
-    State(config): State<Config>,
+    State(state): State<ServerState>,
     Json(payload): Json<CreateMessage>,
 ) -> &'static str {
-    sleep(Duration::from_millis(500)).await;
+    //sleep(Duration::from_millis(500)).await;
+
+    let config = state.config;
     if payload.auth != config.auth {
         return "Неправильный код авторизации\n";
     }
 
-    println!("{}", payload.message);
-    return "message\n";
+    let req = state
+        .client
+        .get(
+            format!(
+                "https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}",
+                config.token, config.id, payload.message,
+            )
+            .as_str(),
+        )
+        .send()
+        .await;
+
+    match req {
+        Ok(_) => {
+            println!("{}", payload.message);
+            return "Отправлено!\n";
+        }
+        Err(err) => {
+            println!("{:?}", err);
+            return "Не отправлено!\n";
+        }
+    }
 }
 
 async fn exit() {

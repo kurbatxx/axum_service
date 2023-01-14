@@ -17,3 +17,10 @@ toml = "0.5.10"
 exitcode = "1.1.2"
 
 reqwest = { version = "0.11.13", features = ["native-tls"] }
+
+[profile.release]
+strip = true
+opt-level = "s"
+lto = true
+panic = "abort"
+codegen-units = 1
