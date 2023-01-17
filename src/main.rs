@@ -6,9 +6,18 @@ use axum::{
 use local_ip_address::local_ip;
 use reqwest::Client;
 use serde_derive::Deserialize;
-use std::{fs, net::SocketAddr};
+use std::{
+    fs::{self, OpenOptions},
+    net::SocketAddr,
+};
 use std::{process, time::Duration};
+
 use tokio::time::sleep;
+
+#[macro_use]
+extern crate log;
+extern crate simplelog;
+use simplelog::*;
 
 const CONFIG_DATA: &str = r#""port" = 3000
 "auth" = ""
@@ -19,22 +28,51 @@ const CONFIG_DATA: &str = r#""port" = 3000
 
 #[tokio::main]
 async fn main() {
+    //init logger
+    let logger_config = simplelog::ConfigBuilder::new()
+        .set_time_format_custom(format_description!(
+            "[day].[month].[year]  [hour]:[minute]:[second]"
+        ))
+        .set_time_offset_to_local()
+        .unwrap()
+        .build();
+
+    CombinedLogger::init(vec![
+        TermLogger::new(
+            LevelFilter::Info,
+            logger_config.clone(),
+            TerminalMode::Mixed,
+            ColorChoice::Auto,
+        ),
+        WriteLogger::new(
+            LevelFilter::Info,
+            logger_config,
+            OpenOptions::new()
+                .read(true)
+                .write(true)
+                .create(true)
+                .append(true)
+                .open("log_data.log")
+                .unwrap(),
+        ),
+    ])
+    .unwrap();
+
     //get config
     let config_file = match fs::read_to_string("config.toml") {
         Ok(file) => file,
         Err(_) => {
             fs::write("./config.toml", CONFIG_DATA)
                 .expect("НЕ УДАЛОСЬ ЗАПИСАТЬ СОЗДАТЬ config.toml, ПРОВЕРЬТЕ ПРАВА");
-            println!("Заполни config файл и перезапусти службу\n");
-
+            //println!("Заполни config файл и перезапусти службу\n");
+            warn!("Не заполнен config, необходимо заполнить config.toml и перезапустить службу");
             process::exit(exitcode::OK);
         }
     };
 
     let config: Config = toml::from_str(&config_file).expect("НЕПРАВИЛЬНО ЗАПОЛНЕН config.toml");
     if config.auth.is_empty() || config.token.is_empty() || config.id == 0 || config.port == 0 {
-        println!("Все поля config файла должны быть заполнены\n");
-
+        warn!("Не все поля config файла заполнены");
         process::exit(exitcode::OK);
     }
 
@@ -63,11 +101,14 @@ async fn main() {
         .route("/exit", get(exit));
 
     //run server
-    println!("Running on {}", &socket_address);
-    axum::Server::bind(&socket_address)
-        .serve(app.into_make_service())
-        .await
-        .unwrap();
+    let server = axum::Server::bind(&socket_address).serve(app.into_make_service());
+
+    if let Err(err) = server.await {
+        error!("{}", err);
+        process::exit(exitcode::OK);
+    } else {
+        info!("Running on {}\n", &socket_address)
+    }
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -122,11 +163,11 @@ async fn send_message(
 
     match req {
         Ok(_) => {
-            println!("{}", payload.message);
+            info!("{}", payload.message);
             return "Отправлено!\n";
         }
         Err(err) => {
-            println!("{:?}", err);
+            warn!("{:?}", err);
             return "Не отправлено!\n";
         }
     }

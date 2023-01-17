@@ -17,6 +17,9 @@ toml = "0.5.10"
 exitcode = "1.1.2"
 
 reqwest = { version = "0.11.13", features = ["native-tls"] }
+simplelog = "0.12.0"
+log = "0.4.17"
+time = "*"
 
 [profile.release]
 strip = true
