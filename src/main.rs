@@ -111,7 +111,9 @@ async fn send_message(
         .get(
             format!(
                 "https://api.telegram.org/bot{}/sendMessage?chat_id={}&text={}",
-                config.token, config.id, payload.message,
+                config.token,
+                config.id,
+                payload.message.to_string(),
             )
             .as_str(),
         )
