@@ -64,7 +64,6 @@ async fn main() {
         Err(_) => {
             fs::write("./config.toml", CONFIG_DATA)
                 .expect("НЕ УДАЛОСЬ ЗАПИСАТЬ СОЗДАТЬ config.toml, ПРОВЕРЬТЕ ПРАВА");
-            //println!("Заполни config файл и перезапусти службу\n");
             warn!("Не заполнен config, необходимо заполнить config.toml и перезапустить службу");
             process::exit(exitcode::OK);
         }
@@ -97,18 +96,26 @@ async fn main() {
     let app = Router::new()
         .route("/message", post(send_message))
         .with_state(server_state)
-        .route("/", get(hello))
+        .route("/", get(check))
         .route("/exit", get(exit));
 
     //run server
-    let server = axum::Server::bind(&socket_address).serve(app.into_make_service());
-
-    if let Err(err) = server.await {
-        error!("{}", err);
-        process::exit(exitcode::OK);
-    } else {
-        info!("Running on {}\n", &socket_address)
-    }
+    info!("Running on {}", &socket_address);
+    axum::Server::try_bind(&socket_address)
+        .unwrap_or_else(|err| {
+            warn!(
+                "Порт {} уже занят, завершите все процессы изпользующие данный порт",
+                config.port
+            );
+            error!("{}", err);
+            process::exit(exitcode::OK);
+        })
+        .serve(app.into_make_service())
+        .await
+        .unwrap_or_else(|err| {
+            error!("{}", err);
+            process::exit(exitcode::OK);
+        });
 }
 
 #[derive(Deserialize, Clone, Debug)]
@@ -131,7 +138,7 @@ struct ServerState {
     config: Config,
 }
 
-async fn hello() -> &'static str {
+async fn check() -> &'static str {
     sleep(Duration::from_millis(1)).await;
     return "It works\n";
 }
