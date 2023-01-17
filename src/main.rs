@@ -33,8 +33,8 @@ async fn main() {
         .set_time_format_custom(format_description!(
             "[day].[month].[year]  [hour]:[minute]:[second]"
         ))
-        .set_time_offset_to_local()
-        .unwrap()
+        // .set_time_offset_to_local()
+        // .unwrap()
         .build();
 
     CombinedLogger::init(vec![
