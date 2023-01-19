@@ -77,8 +77,9 @@ async fn main() {
 
     //create client
     let client = reqwest::Client::builder()
-        .use_native_tls()
-        .danger_accept_invalid_hostnames(true)
+        //.use_native_tls()
+        .use_rustls_tls()
+        //.danger_accept_invalid_hostnames(true)
         .danger_accept_invalid_certs(true)
         .build()
         .unwrap();

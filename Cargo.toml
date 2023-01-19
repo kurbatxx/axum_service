@@ -3,8 +3,6 @@ name = "axum_service"
 version = "0.1.0"
 edition = "2021"
 
-# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
-
 [dependencies]
 axum = "0.6.2"
 tokio = { version = "1.24.1", features = ["rt-multi-thread", "macros"] }
@@ -16,7 +14,7 @@ local-ip-address = "0.5.1"
 toml = "0.5.10"
 exitcode = "1.1.2"
 
-reqwest = { version = "0.11.13", features = ["native-tls"] }
+reqwest = { version = "0.11.13", features = ["rustls-tls"] }
 simplelog = "0.12.0"
 log = "0.4.17"
 time = "*"
